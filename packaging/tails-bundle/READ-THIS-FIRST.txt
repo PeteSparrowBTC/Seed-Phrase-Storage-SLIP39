@@ -1,0 +1,138 @@
+slip39-backup @VERSION@
+Splitting a wallet seed into shares that no one share can open, on an offline
+Tails machine.
+
+This file is written for someone who does not use a terminal. Follow it in order.
+Nothing here needs the internet, and nothing you do here is sent anywhere.
+
+
+WHAT IS IN THIS FOLDER
+
+  slip39-backup-@VERSION@-x86_64.AppImage    the app
+  SHA256SUMS                                 a fingerprint of the app
+  start-here.sh                              checks the app, then opens it
+  READ-THIS-FIRST.txt                        this file
+
+
+STEP 1. COPY THIS WHOLE FOLDER INTO YOUR HOME FOLDER
+
+Open the Files window, drag this folder into Home, and work from the copy.
+
+Programs are usually not allowed to run from a USB stick, so this is not optional.
+Copy the whole folder, not just the app: the four files have to stay together.
+
+
+STEP 2. STAY OFFLINE
+
+Do not connect this machine to the internet, and do not connect to Tor.
+
+The app checks, and stamps anything made while online as INSECURE-TEST: on every
+page, in the file names, and inside the backup itself. That stamp does not come
+off. A backup carrying it is a rehearsal, not a backup.
+
+
+STEP 3. RIGHT-CLICK start-here.sh AND CHOOSE "RUN AS A PROGRAM"
+
+A window appears. Go to step 4.
+
+Do not double-click this file. Double-clicking opens it in a text editor and shows
+you the instructions it is written in, which is confusing and does nothing.
+
+If "Run as a Program" is not in the menu, the file needs permission to run first:
+
+  1. Right-click start-here.sh and choose Properties
+  2. Turn on "Executable as Program"
+  3. Close the window, right-click again, and choose "Run as a Program"
+
+
+The app will not open if you click it directly, and that is on purpose. It is
+switched off until start-here.sh has checked it. Going through start-here.sh is
+the whole point: it is what turns the app on.
+
+
+STEP 4. READ THE WINDOW THAT APPEARS
+
+If it says the app has been checked, press Start and the app opens. That is all.
+
+If it says DO NOT USE THIS FILE, then stop. The app on this stick is not the file
+that was packaged with these instructions. It may have been damaged while copying,
+or changed by something else. Delete it and ask the person who gave you this stick
+for a fresh copy. Do not type your seed words into it.
+
+
+WHAT THE CHECK DOES AND DOES NOT TELL YOU
+
+It tells you the app is exactly the file packaged with these instructions:
+not damaged, not half-copied, not altered on the stick afterwards.
+
+It does not tell you the download itself was genuine. The fingerprint travels in
+this same folder, so anyone able to replace the app could have replaced the
+fingerprint too. For that part you are trusting whoever gave you this stick and
+told you it was safe. That is worth knowing rather than assuming.
+
+
+IF YOU WOULD RATHER CHECK IT YOURSELF
+
+Open Terminal, and type these two lines. The second one prints one line ending in
+OK if all is well.
+
+  cd ~/slip39-backup-@VERSION@-tails
+  sha256sum -c SHA256SUMS
+
+The fingerprint should be:
+
+  @SHA256@
+
+
+WHEN YOU ARE USING THE APP
+
+Choose Create backup if you have the wallet's seed words and want to split them.
+Choose Recover if you have the shares and want the wallet back.
+
+Creating a backup asks for your seed words, and gives you one zip file to save.
+Save it to the USB stick. That zip is a delivery package, not a place to keep
+things: open it, move each piece to where it belongs, and delete the zip.
+
+Inside it you will find two documents that tell you what to do next, and they are
+written for the moment you are in rather than for later:
+
+  IMPORTANT-READ-FIRST.txt    where each piece goes and what must never sit
+                              beside what
+  VERIFY-THIS-BACKUP.txt      how to prove the backup opens using programs
+                              written by other people, before you hand out a
+                              single share
+
+Do the verification while this machine is still on and the shares are still all
+in front of you. That is the last moment at which finding a problem is cheap.
+
+
+WHAT YOU MUST END UP WITH, IN TWO SEPARATE PLACES
+
+The shares, and the one encrypted file. Both are needed to recover, and neither
+one on its own reveals anything.
+
+  shares/          each share is a page of words. Print them, stamp them, or
+                   write them out, and put them in different places. Threshold
+                   many of them rebuild the key.
+  payload/         one file, payload.age.gpg.asc. It is plain text, so it can go
+                   into a password manager entry your executor can reach.
+
+Keeping the shares and the encrypted file in the same place is the one mistake
+that undoes the whole arrangement. Anyone who finds that place has both halves.
+
+
+WHEN YOU ARE FINISHED
+
+Shut Tails down. It keeps nothing, so the app, this folder and everything you
+typed are gone when the machine turns off. What survives is what you copied to the
+USB stick and what you wrote on paper.
+
+Then check, before you walk away, that the seed words are not left anywhere except
+where you meant them to be: not on a screen, not in a text file on the stick, not
+in a photograph.
+
+
+ONE WARNING
+
+There is a copy of this app on a website. It is there for looking at, not for use.
+Never type real seed words into it. Use this offline copy for anything real.

@@ -33,3 +33,7 @@ Slip39Demo.Tests/Bip39/Vectors/**  text eol=lf
 # The published BIP-32 vectors, vendored as the BIP text and hashed by Bip32VectorTests.
 # Same CRLF reasoning as the two entries above.
 Slip39Demo.Tests/Bip32/Vectors/**  text eol=lf
+
+# The Tails bundle's printed instructions. sed-substituted at build time and read on paper
+# next to the stick, so the line endings should not depend on the machine that cloned this.
+packaging/tails-bundle/READ-THIS-FIRST.txt  text eol=lf

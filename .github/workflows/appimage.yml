@@ -330,11 +330,51 @@ jobs:
           echo "A window appeared and the process was still running: $(xdotool search --name 'Seed Phrase Storage' getwindowname %@ | head -1)"
           kill "$APP_PID" "$XVFB_PID" 2>/dev/null || true
 
-      # Publish a checksum next to the artifact so users can verify the copy they carry
-      # to the airgapped machine. Run in the same directory as the file, so what is
-      # recorded is a bare filename and sha256sum -c works wherever the pair is copied.
+      # The Tails bundle: the AppImage, its fingerprint, a launcher that verifies before it
+      # opens anything, and instructions for somebody who does not use a terminal. Closes
+      # issue 28, and the shape comes from PeteSparrowBTC/dice-to-seed so the two tools
+      # package alike.
+      #
+      # Built on EVERY run rather than only on a tag. It is an artifact people run against
+      # real seed phrases, so a defect in it should be found by a pull request and not by
+      # whoever downloads it; dice-to-seed learned that in the other order.
+      #
+      # build-bundle.sh asserts what a comment cannot: that its checker refuses a corrupted
+      # AppImage, refuses a second copy it cannot choose between, refuses a missing
+      # fingerprint, and that the zip stores the executable bit on the launcher and NOT on
+      # the app, so the fastest route into the application is the one that checks it first.
+      #
+      # Runs BEFORE the checksums, so SHA256SUMS can cover the zip. In dice-to-seed 1.3.5 it
+      # ran after, and the zip shipped with no published hash of its own.
+      - name: Assemble the Tails bundle
+        run: bash packaging/tails-bundle/build-bundle.sh "${{ steps.version.outputs.appimage }}" "${{ steps.version.outputs.value }}"
+
+      # Publish checksums next to the artifacts so users can verify the copy they carry to
+      # the airgapped machine. Run in the same directory as the files, so what is recorded is
+      # a bare filename and sha256sum -c works wherever the set is copied.
+      #
+      # WHAT THESE PROVE, since it is easy to overstate: that a file is intact and unaltered
+      # where it now sits. They are not signatures, and they travel with the files they
+      # describe, so they cannot establish that nothing was substituted. Whoever can serve a
+      # different AppImage can serve a different SHA256SUMS beside it. The tagged run's log
+      # prints the same hashes, which is a second place to read them from.
+      #
+      # TWO COVERING FILES, DELIBERATELY. SHA256SUMS covers both artifacts and is what anyone
+      # checking the zip needs. The AppImage's own .sha256 is what somebody still holds years
+      # later when they kept the app and not the release page, which is the file that actually
+      # survives on a USB stick. They cannot drift, because the step below verifies both
+      # against the artifacts on disk and fails if either disagrees.
       - name: Checksum
-        run: sha256sum "${{ steps.version.outputs.appimage }}" | tee "${{ steps.version.outputs.appimage }}.sha256"
+        run: |
+          set -euo pipefail
+          APPIMAGE="${{ steps.version.outputs.appimage }}"
+          BUNDLE="slip39-backup-${{ steps.version.outputs.value }}-tails.zip"
+
+          sha256sum "$APPIMAGE" | tee "${APPIMAGE}.sha256"
+          sha256sum "$APPIMAGE" "$BUNDLE" | tee SHA256SUMS
+
+          sha256sum -c "${APPIMAGE}.sha256"
+          sha256sum -c SHA256SUMS
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -343,26 +383,53 @@ jobs:
           path: |
             ${{ steps.version.outputs.appimage }}
             ${{ steps.version.outputs.appimage }}.sha256
+            slip39-backup-${{ steps.version.outputs.value }}-tails.zip
+            SHA256SUMS
 
-      # On a version tag, publish the AppImage and its checksum to a GitHub Release so
-      # users have a stable, downloadable, checksum-verified artifact.
+      # On a version tag, publish the artifacts to a GitHub Release.
+      #
+      # Three things ship, and the notes below say plainly which one to take. The zip is for
+      # anyone who is going to USE this, because its launcher runs the check that the loose
+      # AppImage leaves to the reader. The loose AppImage stays for anyone verifying by hand
+      # or scripting around it, and because it is the file that survives on a USB stick long
+      # after the release page is forgotten.
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            slip39-backup-${{ steps.version.outputs.value }}-tails.zip
             ${{ steps.version.outputs.appimage }}
             ${{ steps.version.outputs.appimage }}.sha256
+            SHA256SUMS
           fail_on_unmatched_files: true
           body: |
             Offline SLIP-39 + age wallet-backup tool: a single native-window AppImage
             for Tails 7+. No browser, no server, no port bound, no Tor interaction.
 
-            **Verify before use:**
+            **Take `slip39-backup-${{ steps.version.outputs.value }}-tails.zip`** if you are
+            going to use this rather than inspect it. Extract it into your Home folder on
+            Tails, right-click `start-here.sh` and choose "Run as a Program". It checks the
+            app against the fingerprint packaged beside it and opens it only if they match.
+            The app is stored non-executable on purpose, so the route that skips the check is
+            not the easy one. `READ-THIS-FIRST.txt` inside is written for somebody who does
+            not use a terminal.
+
+            The loose AppImage and the checksum files are the same app, for verifying by hand
+            or scripting around:
             ```
-            sha256sum -c ${{ steps.version.outputs.appimage }}.sha256
+            sha256sum -c SHA256SUMS
             chmod +x ${{ steps.version.outputs.appimage }}
             ./${{ steps.version.outputs.appimage }}
             ```
+
+            **What the checksums prove, and what they do not.** They prove a file is intact
+            and unaltered where it now sits: not truncated, not corrupted by the copy to a
+            stick, not rotted in a drawer. They are not signatures, and they travel with the
+            files they describe, so they cannot establish that nothing was substituted:
+            whoever could replace the AppImage could replace `SHA256SUMS` and the launcher
+            along with it. The hashes are also printed in this tagged run's build log, which
+            is a second place to read them from.
+
             Run it on an airgapped machine (Tails 7+) to produce real backups; the tool
             watermarks anything generated while online as INSECURE-TEST.

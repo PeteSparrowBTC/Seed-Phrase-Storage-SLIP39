@@ -24,11 +24,30 @@ and ignore the other.
 - **Tails 7.0 or later** (Debian 13 base). Tails 6 and older are end-of-life
   and unsupported: on them the app fails to start with a `GLIBC_2.38 not
   found` error. Check your version under Applications, Tails, About Tails.
-- A USB drive with the AppImage (and its `.sha256`, if you downloaded it from GitHub
-  Releases). The filename carries the version, for example
-  `slip39-backup-2.0.0-x86_64.AppImage`. Substitute the version you downloaded in the
+- A USB drive with what you downloaded from GitHub Releases. The filenames carry the
+  version, for example `slip39-backup-2.1.0-tails.zip` and
+  `slip39-backup-2.1.0-x86_64.AppImage`. Substitute the version you downloaded in the
   commands below; the app shows the same number in its footer, so you can check the
   file you ran is the file you meant to run.
+
+## Which download to take
+
+**`slip39-backup-<version>-tails.zip`** if you are going to use this. It holds the
+AppImage, a `SHA256SUMS` naming it, a `start-here.sh` that checks the app and opens it
+only if the fingerprint matches, and a `READ-THIS-FIRST.txt` written for somebody who
+does not use a terminal. Extract it into the home folder, right-click `start-here.sh`,
+choose "Run as a Program". The AppImage inside is stored non-executable on purpose:
+until the check has run, there is nothing to launch.
+
+The loose AppImage plus `SHA256SUMS` if you would rather do it by hand, which is the
+route the numbered steps below describe.
+
+**What the fingerprint proves.** That the app is intact and unaltered where it sits:
+not truncated, not damaged by the copy, not changed on the stick afterwards. It is not
+a signature. It travels beside the file it describes, so anyone who could replace the
+app could replace the fingerprint and the launcher too, and no check inside the zip can
+tell you the download was genuine. Read the hashes from the release page and from the
+tagged build log if you want two sources for them.
 
 ## Steps
 
@@ -43,8 +62,11 @@ and ignore the other.
 3. **Verify the download** (only needed if the file came from GitHub rather
    than your own build):
    ```bash
-   sha256sum -c slip39-backup-2.0.0-x86_64.AppImage.sha256
+   sha256sum -c SHA256SUMS
    ```
+   `sha256sum -c slip39-backup-2.0.0-x86_64.AppImage.sha256` does the same for the
+   AppImage alone, and is what you still have if you kept the app and not the rest.
+   Use `--ignore-missing` to check only the files you actually copied across.
 
 4. **Run it** (in Files, right-click the folder and choose Open Terminal Here):
    ```bash
