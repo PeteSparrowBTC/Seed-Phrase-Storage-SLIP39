@@ -195,8 +195,8 @@ One file, one window: no browser, no server, no Tor configuration.
 ```bash
 # 1. Verify and run. A native window opens directly.
 sha256sum -c SHA256SUMS
-chmod +x slip39-backup-2.0.0-x86_64.AppImage
-./slip39-backup-2.0.0-x86_64.AppImage
+chmod +x slip39-backup-3.0.0-x86_64.AppImage
+./slip39-backup-3.0.0-x86_64.AppImage
 ```
 
 The zip route replaces those three lines with a right-click: extract it into your home
@@ -227,7 +227,7 @@ git clone https://github.com/PeteSparrowBTC/slip39-backup.git
 cd slip39-backup
 dotnet publish Slip39Demo.Tauri -c Release -o publish-tauri
 cargo build --release --manifest-path src-tauri/Cargo.toml
-bash packaging/appimage/build-appimage.sh src-tauri/target/release/slip39-backup slip39-backup-2.0.0-x86_64.AppImage
+bash packaging/appimage/build-appimage.sh src-tauri/target/release/slip39-backup slip39-backup-3.0.0-x86_64.AppImage
 ```
 
 ## How It Works
@@ -336,8 +336,8 @@ Open: `http://localhost:5259`
 GitHub Actions automatically creates releases when version tags are pushed:
 
 ```bash
-git tag v2.0.0
-git push origin v2.0.0
+git tag v3.0.0
+git push origin v3.0.0
 ```
 
 This triggers:

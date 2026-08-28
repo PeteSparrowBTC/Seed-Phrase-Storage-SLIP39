@@ -64,14 +64,14 @@ tagged build log if you want two sources for them.
    ```bash
    sha256sum -c SHA256SUMS
    ```
-   `sha256sum -c slip39-backup-2.0.0-x86_64.AppImage.sha256` does the same for the
+   `sha256sum -c slip39-backup-3.0.0-x86_64.AppImage.sha256` does the same for the
    AppImage alone, and is what you still have if you kept the app and not the rest.
    Use `--ignore-missing` to check only the files you actually copied across.
 
 4. **Run it** (in Files, right-click the folder and choose Open Terminal Here):
    ```bash
-   chmod +x slip39-backup-2.0.0-x86_64.AppImage
-   ./slip39-backup-2.0.0-x86_64.AppImage
+   chmod +x slip39-backup-3.0.0-x86_64.AppImage
+   ./slip39-backup-3.0.0-x86_64.AppImage
    ```
    The app window opens directly.
 

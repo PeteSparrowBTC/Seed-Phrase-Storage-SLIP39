@@ -25,7 +25,70 @@ notes, and instructions for holders of the old format.
 Reading that table: **almost everything is MINOR or PATCH.** A change that makes you reach
 for MAJOR is worth stopping over, because it means somebody's existing backup is affected.
 
-## Unreleased
+**One exception, written down so the rule above stays true.** 3.0.0 is not a MAJOR by that
+table. It is where this tool, [dice-to-seed](https://github.com/PeteSparrowBTC/dice-to-seed)
+and the [bitcoin-backup-framework](https://github.com/PeteSparrowBTC/bitcoin-backup-framework)
+document joined one version line, so that a reader can take 3.0.0 of each and matching
+numbers are the whole answer to whether the three belong together. No existing backup is
+affected by it. Version numbers are now shared across three repositories, which means a
+release here can carry a number bumped for something that happened elsewhere; what the
+number means for THIS tool is always in its entry below.
+
+## 3.0.0, 2026-08-28
+
+The jump from 2.0.0 is the shared version line described above and not a broken interface.
+By this file's own table the contents below are a MINOR: new capability, existing backups
+unaffected. A backup made by 2.0.0 still opens by the procedure printed inside it.
+
+### The wallet descriptor is computed, not asked for
+
+- **With two or more cosigners the descriptor is derived from their seeds** at each
+  cosigner's BIP-48 path, assembled as `wsh(sortedmulti(k,...))` with its BIP-380 checksum,
+  and stored in the payload field that previously held whatever was pasted. This tool is the
+  only thing in an offline session holding every cosigner seed and passphrase at once, so it
+  can compute the descriptor without a second program in the room learning a seed. Pasting
+  one still overrides it, and the verification record says which of the two it was.
+- **`verification-record.txt` carries the wallet's first receive address.** The master
+  fingerprint it already carried cannot catch a wrong derivation path, because it is taken at
+  the master key and is identical whatever is derived below it; walk `1h` instead of `2h` and
+  it still matches while every address differs. The address catches the path, the script
+  type, the cosigner ordering and the signature count. The descriptor's xpubs stay inside the
+  encrypted payload, because the record is a file the record itself tells you to print.
+- **A new field asks how many signatures the wallet requires**, because nothing else in the
+  form carried one. The group threshold is about SLIP-39 shares, which is a different
+  question with a similar shape, and assuming k = n would have mis-described every 2-of-3
+  wallet in silence.
+- Multisig only, 2-of-2 or better, mainnet only, native segwit only. Everything else refuses
+  by name and generates nothing: a non-BIP-48 purpose, another coin type, script type `1h`,
+  an unhardened element, seed words that do not read as BIP-39. An address that is subtly
+  wrong is worse than none, because you compare it, see a mismatch, and go looking for the
+  fault in your wallet.
+- The expected descriptors and addresses in the tests were produced by `@scure/bip32` and
+  `@scure/btc-signer` rather than by this implementation, and CI recomputes them on every
+  build, so pinning a constant to match a changed derivation cannot pass unnoticed.
+
+### A Tails bundle that checks itself
+
+- **`slip39-backup-<version>-tails.zip`** holds the AppImage, a `SHA256SUMS` naming it, a
+  `start-here.sh` that verifies before it opens anything, and instructions written for
+  somebody who does not use a terminal. "Download it and verify the SHA-256" is an
+  instruction nobody at an offline Tails machine can follow: there is no release page to read
+  and no second screen. The verification has to arrive with the artifact.
+- The AppImage inside is stored non-executable on purpose, and the launcher sets the bit only
+  after the hash matches, so the fastest route into the application is the one that checks it
+  first.
+- **What that fingerprint proves, stated in the zip itself:** the file is intact and
+  unaltered where it sits. It is not a signature, it travels beside the file it describes, and
+  it cannot establish that the download was genuine. Provenance needs attestation and is
+  tracked in [#33](https://github.com/PeteSparrowBTC/slip39-backup/issues/33).
+- `SHA256SUMS` now covers both published artifacts, and the AppImage keeps its own `.sha256`
+  for whoever kept the app and not the release page. The release job verifies both against the
+  files on disk, so the two cannot drift.
+- The bundle is assembled on every build rather than only on a tag, and its builder asserts
+  that the checker refuses a corrupted AppImage, refuses a duplicate one, refuses a missing
+  fingerprint, and that the zip stores the executable bit on the launcher and not on the app.
+  Each refusal is matched against the message naming its branch, so a refusal for an
+  unrelated reason cannot pass for coverage.
 
 ### Two silent-wrongness fixes
 
@@ -63,6 +126,12 @@ individually because each one shipped inside a backup where nobody can correct i
   `check.txt` and still described the file to verify as `payload.age`.
 - The share `README.txt` promised recovery "using only standard SLIP-39 and age software".
 - `TAILS_INSTRUCTIONS.md` still described three payload forms and an `output.zip`.
+- `TAILS_INSTRUCTIONS.md` also said double-clicking an AppImage in Files does nothing,
+  because GNOME refuses to launch raw executables. On Tails 7 that is wrong: the org's
+  [tails-appimage](https://github.com/PeteSparrowBTC/tails-appimage) notes record an AppImage
+  with its executable bit launching on a plain double-click on `nautilus 48.3`, checked on a
+  real session. It matters beyond accuracy, because that behaviour is the whole reason the
+  AppImage inside the new zip is stored non-executable.
 - The README called the download `output.zip` in nine places, and its "Two-layer
   encryption" diagram omitted the OpenPGP layer the section is named after.
 - `ShippedDocumentConsistencyTests` now holds these as invariants across documents rather

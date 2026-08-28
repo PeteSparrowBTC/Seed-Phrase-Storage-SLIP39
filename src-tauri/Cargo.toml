@@ -8,7 +8,7 @@ name = "slip39-backup"
 # what names the AppImage. VersionConsistencyTests fails if the two drift, because a
 # window reporting one version inside a file named after another is the kind of
 # discrepancy that makes somebody distrust a backup they should trust.
-version = "2.0.0"
+version = "3.0.0"
 edition = "2021"
 rust-version = "1.77"
 description = "Offline SLIP-39 + age wallet backup, desktop shell"
