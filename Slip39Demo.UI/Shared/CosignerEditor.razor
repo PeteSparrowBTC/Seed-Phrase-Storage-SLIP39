@@ -28,7 +28,11 @@
 
         <div class="field">
             <label class="field-label">Derivation path</label>
-            <input class="input input-mono" @bind="Vm.DerivationPath" @bind:after="NotifyChanged" />
+            @* The placeholder never shows, because the field always has a value. It is
+               there as the BIP-48 multisig path in the shape the descriptor builder
+               accepts, so a reader who clears the field can see what belongs in it. *@
+            <input class="input input-mono" @bind="Vm.DerivationPath" @bind:after="NotifyChanged"
+                   placeholder="m/48'/0'/0'/2'" />
         </div>
 
         @* Wallet fingerprint is DERIVED from the seed + passphrase, not typed. The

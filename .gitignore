@@ -18,7 +18,7 @@ publish/
 .playwright-mcp/
 
 # JS tooling for the independent-verify bundle — sources are committed, deps are not
-tools/independent-verify/node_modules/
+tools/*/node_modules/
 
 # Built distributables (AppImage etc.) — produced by packaging scripts / CI, never committed
 dist/

@@ -327,3 +327,97 @@ outcomes. `Owner` decides what an outcome costs, because that depends on whether
 the backup is real. Each of the three has its own tests, and the passphrase goes
 to gpg on stdin rather than on the command line, where any other process could
 read it.
+
+---
+
+## 11. The multisig descriptor and the first receive address are computed, not asked for
+
+Added 2026-08-28, closing issue 29. Owner mode used to ask the owner to paste a
+wallet descriptor. With two or more cosigners it now derives one, along with the
+wallet's first receive address, and the pasted field becomes the override.
+
+This **reverses** section 10.2 of the design spec, which said descriptor
+generation was "not implemented in this tool" on the grounds that the tool backs
+up seed material and is not a wallet. The boundary was reasonable and the
+conclusion was wrong for one reason: this program is the only thing in an offline
+session holding every cosigner seed and passphrase at once. Everything needed was
+already present, `Bip32MasterFingerprint` having derived the BIP-39 seed and run
+the BIP-32 root HMAC (and thrown the chain code away) since the beginning. Asking
+for the descriptor meant either a second program in the airgapped session or a
+hand-typed string in the field that tells an executor how to rebuild the wallet.
+
+**Why the first receive address rather than an xpub or the fingerprint.** The
+record already carried the master fingerprint, and a master fingerprint cannot
+catch a wrong derivation path: it is HASH160 of the master public key and is
+identical no matter what is derived afterwards. Walk `1h` instead of `2h` and it
+still matches while every address differs.
+
+| Compared | Proves | Blind to |
+| --- | --- | --- |
+| Master fingerprint | Same seed and passphrase | Path, script type, ordering, threshold |
+| Account xpub | Seed, passphrase, path | Script type, ordering, threshold |
+| First receive address | All of it | Nothing that matters |
+
+One string, comparable against any wallet software by somebody who has never
+heard of an xpub. It also makes descriptor import optional, which matters because
+Electrum has no native descriptor import for multisig (spesmilo/electrum#8657):
+rebuilding the multisig by hand and comparing one address is the only
+verification available there.
+
+**The xpubs stay out of the verification record.** The record calls itself
+non-secret and suggests a printed copy in a safe and a plain-text note in a
+password manager, which is right for a fingerprint and wrong for an xpub: an xpub
+reveals every address the wallet will ever use, and their balances, permanently.
+So the descriptor and its xpubs go into the encrypted payload and the record gets
+the address, which leaks one address rather than the wallet. `VerificationRecordTests`
+pins that with a regex for serialised key material rather than for the word, so the
+record's prose can still explain what an xpub is.
+
+**Multisig only, and 2-of-2 or better.** One cosigner is refused rather than
+described as `wpkh(...)`, and so is a 1-of-N policy, where a single cosigner
+spends alone and the threshold split protects nothing. The signing threshold is a
+new field on the form, because nothing else in it carries one: the group
+threshold is about SLIP-39 shares, which is a different question with a similar
+shape, and inferring `k = n` would have silently mis-described every 2-of-3
+wallet.
+
+**Why m/48h/0h/0h/2h as the default, and why the field still wins.** BIP-48
+because multisig has its own purpose field and the wallets people actually
+recover in have settled on it; `0h` for mainnet per SLIP-44; `2h` for native
+segwit, because P2SH-wrapped exists for senders that could not build a bech32
+output and a witness script is large enough that the fee difference is worth more
+to a multisig than to a single key. Taproot is not offered: BIP-48 has no script
+type for it, and multi-party taproot is not yet something several independent
+wallets rebuild from a backup the same way. But the derivation follows each
+cosigner's own path field rather than forcing that path, because the field is
+visible and a visible field that does not drive the derivation is a trap. Adding
+a second cosigner moves any path still at the untouched single-sig default to the
+BIP-48 one, and leaves an edited path alone.
+
+**Fails closed, with an escape hatch.** Every path the builder cannot describe
+exactly is a refusal naming the reason, and generation stops: a non-BIP-48
+purpose, a coin type other than mainnet, script type `1h`, an unhardened element,
+seed words that do not read as BIP-39. None of them produces a best guess,
+because a descriptor or an address that is subtly wrong is worse than none: the
+owner compares it, sees a mismatch, and goes looking for the fault in their
+wallet. The escape hatch is the pasted field, which overrides all of this and is
+stored as typed. The record says which of the two it was, since a pasted
+descriptor was checked by nothing here and an owner reading the record years
+later cannot otherwise tell.
+
+**How it is tested, and why that matters more than the code.** This derives
+addresses that receive money. The expected descriptors and addresses in
+`MultisigWalletTests` were not produced by this implementation: they come from
+`@scure/bip32` and `@scure/btc-signer`, driven by `tools/descriptor-crosscheck`,
+which shares no code with `Slip39Demo.Core`. The published BIP-32 vectors run
+against the derivation from the vendored BIP text itself rather than a
+transcription (`Slip39Demo.Tests/Bip32/Vectors/bip-0032.mediawiki`, hash
+asserted, all 17 chains including the leading-zero cases), BIP-173 pins the
+address encoder and BIP-380 the descriptor checksum. Same argument as decisions 4
+and 10: a check written by the thing being checked is not a check.
+
+**What none of it buys.** The address confirms the descriptor matches the seeds
+in the form. It says nothing about whether that wallet is the one holding the
+owner's coins, which only the owner can know by comparing it against the wallet
+they actually use. That comparison is a step in `VERIFY-THIS-BACKUP.txt` and it
+is still a human step.

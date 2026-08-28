@@ -51,7 +51,7 @@ Traditional BIP-39 seed phrases have a problem: if someone finds your 12/24 word
 - **Threshold secret sharing**: split your wallet into multiple shares; only threshold-many can recover it.
 - **Standard cryptography end-to-end**: SLIP-39 for the share split, age and OpenPGP for the payload encryption. No proprietary "concatenate seed and passphrase with padding" encoding.
 - **One file to distribute, one file to keep online**: the backup zip is laid out so share zips go to physical/offline storage and `payload.age.gpg.asc` goes to a password-manager entry with Emergency Access for your executor.
-- **Verifiable on recovery without exposing the seed**: a `verification-record.txt` lets you do periodic dry-run recovery checks against a stored fingerprint.
+- **Verifiable on recovery without exposing the seed**: a `verification-record.txt` lets you do periodic dry-run recovery checks against a stored fingerprint, plus the wallet's first receive address for a multisig backup. The address is what catches a wrong derivation path, script type, cosigner ordering or signature count; a master fingerprint cannot, because it is the same whatever is derived below it. The descriptor's xpubs stay inside the encrypted payload, since the record is a file you are meant to print.
 
 ## How this compares to other tools
 
@@ -234,7 +234,8 @@ bash packaging/appimage/build-appimage.sh src-tauri/target/release/slip39-backup
    - Enter your BIP-39 seed words in the **Top-level seed words** field (single-sig / shared-seed case). For multisig with distinct per-cosigner seeds, leave this empty and fill the per-cosigner seed fields instead.
    - (Optional) Set a label for the wallet.
    - (Optional) Add a BIP-39 passphrase to a cosigner.
-   - (Optional) Adjust derivation path, descriptor, group threshold, or group shape. Default is 3-of-5 single-group.
+   - (Optional) Adjust derivation path, group threshold, or group shape. Default is 3-of-5 single-group.
+   - For multisig (two or more cosigners), set how many **signatures** the wallet requires and leave the **descriptor** field empty: the tool derives `wsh(sortedmulti(k,...))` from the cosigner seeds at their BIP-48 paths, and puts the wallet's first receive address in `verification-record.txt` so you can check the backup describes the right wallet. Paste a descriptor instead to record a wallet that already exists on a path this tool does not compute.
 3. Click **Generate**.
 4. Save the resulting zip (a browser download on the demo, the native save
    dialog on the AppImage). It contains:

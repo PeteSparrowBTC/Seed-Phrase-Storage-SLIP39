@@ -45,6 +45,15 @@ The short form:
   passphrases and the message lands in an on-screen banner.
 - **Dice entropy for K is 50 rolls, not 99**, XORed with the system RNG, never
   replacing it. Never reuse the seed's rolls.
+- **The multisig descriptor is computed, and the record carries the first receive
+  address.** With two or more cosigners the tool derives each account key at that
+  cosigner's BIP-48 path and assembles `wsh(sortedmulti(k,...))`; a pasted
+  descriptor overrides it, and the record says which it was. The address is there
+  because a master fingerprint cannot catch a wrong derivation path, and the
+  xpubs stay out of the record because it is a file meant to be printed. Multisig
+  only, 2-of-2 or better, mainnet only, native segwit only, and every path it
+  cannot describe exactly is a refusal rather than a guess. This REVERSES design
+  spec section 10.2.
 - **Rejected:** a browser verifier shipped in our own bundle (it cannot verify
   its own producer), and zip password protection (the ubiquitous variant is
   ZipCrypto, which is broken, and our plaintext prefix is published).

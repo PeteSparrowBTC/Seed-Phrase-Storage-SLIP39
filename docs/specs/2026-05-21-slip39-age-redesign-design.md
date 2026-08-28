@@ -1459,7 +1459,25 @@ Several directions were explored during the design and explicitly excluded. Each
 
 ### 10.2 Multisig descriptor design
 
-**Not implemented in this tool.** The tool backs up *seed material* — including multiple cosigner seeds in one payload (§5.3, §7.5). It does not generate multisig descriptors, manage signing rounds, validate PSBTs, or otherwise act as a wallet. Users design their multisig wallet in Sparrow / Specter / their hardware wallet of choice, then back up the resulting cosigner seeds via this tool.
+**REVERSED, 2026-08-28.** This section said the tool does not generate descriptors.
+It now does, for wallets with two or more cosigners: it derives each cosigner's
+account key at their BIP-48 path, assembles `wsh(sortedmulti(k,...))` with the
+BIP-380 checksum, stores it in the payload's existing `descriptor` field, and puts
+the wallet's first receive address in `verification-record.txt`. Pasting a
+descriptor overrides all of it. The reasoning, the limits, and what the address
+does and does not prove are in
+[decision 11](../decisions/2026-08-09-envelope-entropy-and-implementations.md).
+
+The original text, kept because the boundary it drew is still the right one for
+everything except the descriptor:
+
+> **Not implemented in this tool.** The tool backs up *seed material* — including multiple cosigner seeds in one payload (§5.3, §7.5). It does not generate multisig descriptors, manage signing rounds, validate PSBTs, or otherwise act as a wallet. Users design their multisig wallet in Sparrow / Specter / their hardware wallet of choice, then back up the resulting cosigner seeds via this tool.
+
+What changed the conclusion for the descriptor alone: this program is the only
+thing in an offline session that holds every cosigner seed and passphrase at once,
+so it can compute the descriptor without a second program learning a seed, and
+everything needed was already present for the master fingerprint. Signing rounds,
+PSBTs and wallet behaviour remain out of scope.
 
 ### 10.3 Timelocks (any flavor)
 

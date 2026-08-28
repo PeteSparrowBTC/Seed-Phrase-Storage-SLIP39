@@ -9,6 +9,7 @@
 @using Slip39Demo.Core.Pgp
 @using Slip39Demo.Core.Slip39
 @using Slip39Demo.Core.Verification
+@using Slip39Demo.Core.Wallet
 @using Slip39Demo.UI.Services
 @using Slip39Demo.UI.Shared
 
@@ -45,9 +46,20 @@
                            placeholder="abandon ability able about above absent absorb abstract absurd abuse access accident" />
                 </div>
                 <div class="field">
-                    <label class="field-label">Descriptor (multisig only, optional)</label>
+                    <label class="field-label">Descriptor (leave empty and it is computed)</label>
                     <input class="input input-mono" @bind="model.Descriptor"
                            placeholder="wsh(sortedmulti(2, ...))" />
+                    @* Computed is the default because this tool already holds every
+                       cosigner seed and passphrase at once, which nothing else in an
+                       offline session does, so it can derive the descriptor without a
+                       second program and without a hand-typed string. Pasting overrides
+                       it, for a wallet that already exists on a path this does not
+                       compute; nothing here parses or checks what you paste. *@
+                    <div class="hint">
+                        With two or more cosigners this is derived from their seeds, along
+                        with the wallet's first receive address for checking the backup
+                        later. Paste one to record an existing wallet instead.
+                    </div>
                 </div>
             </div>
         </div>
@@ -142,6 +154,27 @@
                             OnRemove="() => RemoveCosigner(idx)" />
         }
         <button class="btn btn-sm" @onclick="AddCosigner">+ Add cosigner</button>
+
+        @* The wallet's signing policy, which nothing else in this form carries. The group
+           threshold further down is about SLIP-39 shares: how many pieces of paper
+           reconstruct the key that opens the backup. This is how many cosigners must sign
+           a transaction, and it goes into the computed descriptor. Only asked when there
+           is more than one cosigner, because with one there is nothing to choose. *@
+        @if (model.Cosigners.Count > 1)
+        {
+            <div class="field">
+                <label class="field-label">
+                    Signatures required (of @model.Cosigners.Count cosigners)
+                </label>
+                <input class="input" type="number" min="2" max="@model.Cosigners.Count"
+                       @bind="model.SignaturesRequired" placeholder="signatures required" />
+                <div class="hint">
+                    The wallet's own signing policy, not the share threshold. 2 of 2 or
+                    better; a 1-of-N wallet lets any single cosigner spend alone, which is
+                    what splitting the key into shares exists to prevent.
+                </div>
+            </div>
+        }
 
         @* Live sanity checks on the cosigner set. Two cosigners deriving from the
            same secret cannot add multisig security, so surface that before the user
@@ -265,6 +298,27 @@
                             <span class="field-label">Wallet master fingerprint</span>
                             <p class="mono-block">@success.Fingerprint</p>
                         </div>
+
+                        @* The check worth running today, while the wallet is still in front
+                           of you: rebuild it in wallet software and compare this address.
+                           The fingerprint above cannot catch a wrong derivation path, script
+                           type, key ordering or threshold, because it is taken at the master
+                           key and is identical whatever is derived below it. This address
+                           changes completely if any of the four is wrong. Shown only when the
+                           descriptor was computed here; a pasted one was parsed by nothing. *@
+                        @if (success.FirstReceiveAddress is not null)
+                        {
+                            <div class="field">
+                                <span class="field-label">First receive address (computed)</span>
+                                <p class="mono-block">@success.FirstReceiveAddress</p>
+                                <p class="hint">
+                                    Also in verification-record.txt. Rebuild this wallet in any
+                                    wallet software from the same seeds and compare: if the first
+                                    receive address matches, the descriptor in this backup
+                                    describes the wallet you meant.
+                                </p>
+                            </div>
+                        }
 
                         <div class="field">
                             <span class="field-label">Downloaded as</span>
@@ -393,7 +447,7 @@
     // own monospaced row for copying and comparing.
     sealed record GenerationSummary(
         bool TestOnly, int ShareCount, Bip32Fingerprint Fingerprint, string FileName,
-        BackupKeySource KeySource);
+        BackupKeySource KeySource, string? FirstReceiveAddress);
 
     // Environment gate. machineOnline: null until the first probe completes.
     // A REAL (unwatermarked) backup requires probe==offline AND the user's
@@ -500,7 +554,7 @@
         {
             success = new GenerationSummary(
                 pendingIsTestOnly, pendingOutcome.MnemonicCount, pendingOutcome.Fingerprint,
-                pendingFileName, pendingOutcome.KeySource);
+                pendingFileName, pendingOutcome.KeySource, pendingOutcome.FirstReceiveAddress);
             saveCancelled = false;
         }
         else
@@ -538,7 +592,11 @@
         byte[] PayloadAge,
         string PayloadText,
         EncryptionTranscript Transcript,
-        BackupKeySource KeySource);
+        BackupKeySource KeySource,
+        // Null unless the descriptor was computed here. The result panel shows it because
+        // comparing it against wallet software is the check the owner is meant to run, and
+        // a check nobody sees is a check nobody runs.
+        string? FirstReceiveAddress);
 
     // Pure projection from the view-model to the bundle bytes. Returns a Result so
     // every legitimate failure surface (no seed, age failure, SLIP-39 failure) is
@@ -560,6 +618,12 @@
 
         var firstPp = model.Cosigners.Select(c => c.Passphrase).FirstOrDefault(p => !string.IsNullOrEmpty(p));
 
+        // Before the payload, because the payload carries the result. A refusal here is
+        // the same class of stop as an unusable backup key: named, and nothing generated.
+        var wallet = ResolveDescriptor();
+        if (wallet.IsFailure)
+            return Result.Failure<BuildOutcome>(wallet.Error);
+
         var payload = new PayloadV1_1(
             SchemaVersion: "1.1",
             Created: $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}",
@@ -575,7 +639,7 @@
                 // tool has both, so it records the real master fingerprint rather than
                 // trusting a hand-typed (possibly wrong) value.
                 XpubFingerprint: ComputeCosignerFingerprint(c))).ToList(),
-            Descriptor: string.IsNullOrEmpty(model.Descriptor) ? null : model.Descriptor,
+            Descriptor: wallet.Value.Text,
             // Single-group threshold display; multi-group uses the first group's
             // shape as a primary display. The full group structure is reflected in
             // the README per share regardless.
@@ -676,7 +740,12 @@
             // bytes would name a file nobody has, so a dry-run check years later could
             // never match.
             payloadAgeBytes: Encoding.UTF8.GetBytes(wrapped.Value),
-            walletMasterFingerprint: fingerprint);
+            walletMasterFingerprint: fingerprint,
+            // The descriptor's own text stays out of the record: it carries account
+            // xpubs, and this file is the one the record tells the owner to print and to
+            // keep in a password manager. The address is the part that may travel.
+            descriptorProvenance: wallet.Value.Provenance,
+            firstReceiveAddress: wallet.Value.FirstReceiveAddress);
 
         var bundle = OutputBundleBuilder.Build(shareZips, wrapped.Value, record);
 
@@ -700,7 +769,7 @@
         };
 
         return new BuildOutcome(bundle, mnemonics.Count, fingerprint, verifySubsets, ciphertext, payloadText,
-            transcript, keyChoice.Value.Source);
+            transcript, keyChoice.Value.Source, wallet.Value.FirstReceiveAddress);
     }
 
     // What an outer-lock outcome costs. Kept apart from the check itself so the rule is
@@ -732,6 +801,48 @@
     // Every seed the form holds: the shared top-level one and each cosigner's own words.
     // All of them are compared against a pasted key, not just the first, because the
     // collision is just as total when the reused roll log belongs to the third cosigner.
+    // The descriptor that goes into the payload, where it came from, and the first receive
+    // address when there is one. Address is null unless the descriptor was computed here,
+    // because nothing in this tool parses a descriptor somebody else wrote.
+    sealed record WalletDescription(string? Text, DescriptorProvenance Provenance, string? FirstReceiveAddress);
+
+    // Computed by default, pasted as the override.
+    //
+    // The order matters and is deliberate: a pasted descriptor wins outright and is stored
+    // as typed. Somebody backing up a wallet that already exists, on a path or script type
+    // this tool does not compute, must be able to record it; and this tool does not parse
+    // what they paste, so it can say nothing about it beyond where it came from.
+    //
+    // With no pasted descriptor and two or more cosigners, the descriptor is derived. A
+    // failure there STOPS generation rather than falling back to an empty descriptor
+    // field: the owner asked for a multisig backup, and one whose descriptor is missing is
+    // a backup whose executor cannot rebuild the wallet even holding every seed.
+    Result<WalletDescription> ResolveDescriptor()
+    {
+        if (!string.IsNullOrWhiteSpace(model.Descriptor))
+            return new WalletDescription(model.Descriptor!.Trim(), DescriptorProvenance.Pasted, null);
+
+        // One cosigner is a single-signature wallet, which has no descriptor here and
+        // never had one. Unchanged behaviour, deliberately: this feature adds a computed
+        // descriptor for multisig, it does not start refusing backups that worked before.
+        if (model.Cosigners.Count < 2)
+            return new WalletDescription(null, DescriptorProvenance.NotRecorded, null);
+
+        var cosigners = model.Cosigners
+            .Select(c => new MultisigCosigner(
+                Id: c.Id,
+                // The seed this cosigner actually signs with: its own words, or the
+                // shared top-level ones. Same rule the fingerprint column already uses.
+                SeedWords: !string.IsNullOrWhiteSpace(c.SeedWords) ? c.SeedWords! : (model.TopLevelSeedWords ?? ""),
+                Passphrase: c.Passphrase,
+                DerivationPath: c.DerivationPath))
+            .ToList();
+
+        return MultisigWallet.Describe(cosigners, model.SignaturesRequired)
+            .Map(wallet => new WalletDescription(
+                wallet.Descriptor, DescriptorProvenance.Computed, wallet.FirstReceiveAddress));
+    }
+
     IEnumerable<string?> SeedWordsInForm() =>
         model.Cosigners.Select(c => c.SeedWords).Prepend(model.TopLevelSeedWords);
 
@@ -874,12 +985,30 @@
 
     bool HasBlockingCosignerDuplicate() => CosignerWarnings().Any(w => w.Strong);
 
-    void AddCosigner() =>
+    // The single-signature default a form starts with, and the BIP-48 multisig path.
+    // Named because AddCosigner has to recognise the first to replace it with the second.
+    const string SingleSigDefaultPath = "m/84'/0'/0'";
+    const string MultisigDefaultPath = "m/48'/0'/0'/2'";
+
+    void AddCosigner()
+    {
+        // A second cosigner makes this a multisig wallet, and multisig has its own BIP-32
+        // purpose field: 48h, not 84h. Any cosigner still sitting on the untouched
+        // single-sig default is moved, because leaving it there would refuse at Generate
+        // for a reason the owner did not cause and cannot see. A path that was EDITED is
+        // left alone: that is a deliberate choice, and silently substituting another is
+        // exactly what this tool refuses to do elsewhere.
+        model.Cosigners
+            .Where(c => c.DerivationPath == SingleSigDefaultPath)
+            .ToList()
+            .ForEach(c => c.DerivationPath = MultisigDefaultPath);
+
         model.Cosigners.Add(new CosignerVm
         {
             Id = $"cosigner-{model.Cosigners.Count + 1}",
-            DerivationPath = "m/84'/0'/0'",
+            DerivationPath = MultisigDefaultPath,
         });
+    }
 
     void RemoveCosigner(int idx)
     {

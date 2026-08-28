@@ -143,6 +143,24 @@ jobs:
           fi
           echo "The committed verifier bundle is exactly what its pinned sources produce."
 
+      # The computed multisig descriptor and first receive address, checked against an
+      # implementation this repository did not write.
+      #
+      # Why this runs in CI rather than only at authoring time: MultisigWalletTests pins
+      # descriptors and addresses as constants, and the failure mode for a pinned constant
+      # is somebody changing the C# and then "fixing" the constant to match, at which point
+      # the test proves only that the code is deterministic. This step recomputes the same
+      # wallets with @scure/bip32 and @scure/btc-signer and fails if they disagree, so that
+      # edit stops being invisible. These derive addresses that receive money.
+      #
+      # `npm ci` and exact versions in package.json: an address that changed because a
+      # dependency resolved differently is a supply-chain event to investigate, not a
+      # number to update.
+      - name: Cross-check the descriptor derivation against an independent stack
+        run: |
+          set -euo pipefail
+          ( cd tools/descriptor-crosscheck && npm ci --no-audit --no-fund && node crosscheck.mjs )
+
       # The suite gates the artifact, before anything is packaged. This AppImage is
       # what people run against real seed phrases on an airgapped machine.
       #

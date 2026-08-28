@@ -29,3 +29,7 @@ Slip39Demo.Core/Bip39/WordList.english.txt  text eol=lf
 # their SHA-256 is asserted, so the suite can show it is running the real vectors and not
 # a copy someone adjusted until the tests went green. Same CRLF reasoning as above.
 Slip39Demo.Tests/Bip39/Vectors/**  text eol=lf
+
+# The published BIP-32 vectors, vendored as the BIP text and hashed by Bip32VectorTests.
+# Same CRLF reasoning as the two entries above.
+Slip39Demo.Tests/Bip32/Vectors/**  text eol=lf

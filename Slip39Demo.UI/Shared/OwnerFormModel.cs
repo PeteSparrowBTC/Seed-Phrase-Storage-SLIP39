@@ -18,6 +18,13 @@ public sealed class OwnerFormModel
     public string? BackupKeyHex { get; set; }
 
     public string? BackupKeyCheckCode { get; set; }
+
+    // How many of the cosigners must sign, the k of k-of-n. Only meaningful with two or
+    // more cosigners, which is when the field appears, and it cannot be inferred from
+    // anything else in this form: the group threshold below is about SLIP-39 shares, a
+    // different thing entirely. Defaults to 2, so the common 2-of-2 and 2-of-3 wallets
+    // need no thought, and 2 is also the floor MultisigWallet enforces.
+    public int SignaturesRequired { get; set; } = 2;
     public List<CosignerVm> Cosigners { get; set; } = [new CosignerVm { Id = "main", DerivationPath = "m/84'/0'/0'" }];
     public List<ShareGroupVm> Groups { get; set; } = [new ShareGroupVm { Name = "only", Threshold = 3, Count = 5 }];
 }

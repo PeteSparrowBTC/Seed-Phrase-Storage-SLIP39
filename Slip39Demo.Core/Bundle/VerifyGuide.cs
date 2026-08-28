@@ -240,6 +240,32 @@ salt, file key and nonce), so the same secret encrypted twice
 never produces the same bytes. Identical output would be the
 bug. Record its checksum separately if you want to track it.
 
+IF THIS IS A MULTISIG WALLET, CHECK THE ADDRESS
+----------------------------------------------------------------
+Only if verification-record.txt has a "First receive address"
+line. It is there when this tool computed the wallet descriptor,
+which it does whenever a backup has two or more cosigners.
+
+Everything above proves the backup opens and returns your seed
+words. It does not prove the wallet those words rebuild is the
+wallet you have been using. The master fingerprint cannot show
+that either: it is taken at the master key, so it is the same
+whatever is derived below it. Walk the wrong derivation path and
+the fingerprint still matches while every address differs.
+
+The address does show it. Rebuild the wallet in the software you
+normally use, from the seeds this backup just gave back and the
+descriptor inside the payload, and compare its first receive
+address with the one in verification-record.txt.
+
+  They match:      the descriptor in this backup describes the
+                   wallet you meant. Nothing else to do.
+
+  They differ:     stop. Either the cosigner order, a derivation
+                   path, a passphrase or the signature count is
+                   not what you thought. Do not distribute the
+                   shares; fix the form and generate again.
+
 BEFORE YOU WALK AWAY
 ----------------------------------------------------------------
     rm check.txt check3.txt payload.age

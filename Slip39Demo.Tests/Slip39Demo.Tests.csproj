@@ -47,5 +47,9 @@
          running the real vectors rather than a copy adjusted until the tests
          went green. -->
     <Content Include="Bip39\Vectors\bip39-english-vectors.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The published BIP-32 test vectors, read at runtime by Bip32VectorTests. Vendored
+         as the BIP text itself rather than transcribed into a table, so the chains the
+         suite runs are the ones bitcoin/bips publishes. Its SHA-256 is asserted there. -->
+    <Content Include="Bip32\Vectors\bip-0032.mediawiki" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
