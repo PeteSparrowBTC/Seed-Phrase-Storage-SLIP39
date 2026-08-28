@@ -73,9 +73,21 @@ tagged build log if you want two sources for them.
    chmod +x slip39-backup-2.0.0-x86_64.AppImage
    ./slip39-backup-2.0.0-x86_64.AppImage
    ```
-   The app window opens directly. (Double-clicking in the Files app does
-   nothing: GNOME deliberately refuses to launch raw executables, so the
-   terminal is the supported path.)
+   The app window opens directly.
+
+   This used to say that double-clicking in the Files app does nothing, because
+   GNOME refuses to launch raw executables. That is wrong on Tails 7, and the
+   correction is field-tested rather than reasoned: on `nautilus 48.3` an AppImage
+   carrying its executable bit launches on a plain double-click, with no terminal
+   and no Properties step (see the org's
+   [tails-appimage field notes](https://github.com/PeteSparrowBTC/tails-appimage),
+   checked 2026-08-11). Scripts are the exception: an executable `.sh` opens in the
+   text editor, which is why the bundle's launcher is run through right-click, "Run
+   as a Program".
+
+   That behaviour is also why the AppImage inside the Tails zip is stored
+   non-executable. If it arrived ready to double-click, the fastest route into the
+   app would be the one that skips the check.
 
 5. **Create your backup** in the Owner page. Save the output where you choose
    via the native save dialog; print the recovery kit via the print dialog
